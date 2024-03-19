@@ -1,0 +1,193 @@
+---
+title: "Wages, Gender and other factors"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+In this notebook we make use of a small data set("CPS1985.xlsx") concerning employees and examine:
+
+-   the composition of the work force with respect to various employee characteristics(variables).
+
+-   whether there is any sign of of possible wage difference between men and women and
+
+-   if there is any profound correlation among the variables
+
+We first import the relevant data which are available as an Excel file.
+
+```{r}
+setwd("D:/data/Econometrics and Applied Statistics")
+library(readxl)
+cps <- read_excel("CPS1985.xlsx")
+```
+
+We can take a look at the data set by checking its first rows
+
+```{r}
+head(cps)
+```
+
+It is also useful to get a summary of the dataset
+
+```{r}
+summary(cps)
+```
+
+from which we get the basic descriptive statistics for each numerical-variable and the length for each character-variable.
+
+Additionally, let us draw a Histogram and a Boxplot for each variable. From the diagrams we can check for skewness and look for outliers (that we may or may not decide to get rid off).
+
+```{r}
+hist(cps$wage,
+xlab = "Hourly Wage in $",
+main = "Histogram of wage",
+col = "steelblue", breaks = 20)
+
+boxplot(cps$wage,
+ylab = "Hourly Wage in $",
+main = "Boxplot of wage",
+col = "steelblue")
+
+hist(cps$education,
+xlab = "Education in years",
+main = "Histogram of Education",
+col = "steelblue", breaks = 20)
+
+boxplot(cps$education,
+ylab = "Education in years",
+main = "Boxplot of education",
+col = "steelblue")
+
+hist(cps$experience,
+xlab = "Experience in years",
+main = "Histogram of Experience",
+col = "steelblue", breaks = 20)
+
+boxplot(cps$experience,
+ylab = "Experience in years",
+main = "Boxplot of experience",
+col = "steelblue")
+
+hist(cps$age,
+xlab = "Age in years",
+main = "Histogram of age",
+col = "steelblue", breaks = 20)
+
+boxplot(cps$age,
+ylab = "Age in years",
+main = "Boxplot of age",
+col = "steelblue")
+```
+
+We calculate also the distribution of each categorical variable
+
+```{r}
+table(cps$ethnicity)
+table(cps$region)
+table(cps$gender)
+table(cps$occupation)
+table(cps$sector)
+table(cps$union)
+table(cps$married)
+```
+
+We can also calculate each distribution across the possible values of a specific categorical variable. For example, a statistic of interest would be the distribution of working sector, marital status or wage across gender
+
+```{r}
+table(cps$gender, cps$sector)
+table(cps$gender, cps$married)
+tapply(cps$wage, cps$gender, summary)
+```
+
+Even more specifically, we are interested in the mean wage, standard deviation and total number of observations of each distinct state of gender(male or female). To retrieve this information we group the initial data by gender and proceed the aforementioned calculations
+
+```{r message=FALSE}
+library(dplyr)
+avgs <- cps %>% 
+  group_by(gender) %>% 
+  summarise(mean(wage), 
+            sd(wage), 
+            n())
+print(avgs)
+```
+
+A first glance naive conclusion from the above table would be that the average wage for women is about 2\$ less than the average wage for men. But is this really true?
+
+To compare the mean wage for women and men and test statistical significance of the difference between them we should split the initial data in 2 appropriate subgroups (men, women) and perform a t-test applied on the variable "wage"
+
+```{r}
+male_obs <- cps %>% dplyr::filter(gender == "male") 
+
+female_obs <- cps %>% dplyr::filter(gender == "female")
+t.test(male_obs$wage, female_obs$wage)
+```
+
+The above result confirms that the the difference in means is not equal to 0.
+
+To illuminate the procedure we perform the above calculation also manually. To do so we return to the table "avgs" getting access to the [estimated]{.underline} E(wage), se(wage) and number of observation for each gender.
+
+```{r}
+
+# split the dataset by gender
+male <- avgs %>% dplyr::filter(gender == "male") 
+
+female <- avgs %>% dplyr::filter(gender == "female")
+
+# rename columns of both splits
+colnames(male)   <- c("Gender", "Y_bar_m", "s_m", "n_m")
+colnames(female) <- c("Gender", "Y_bar_f", "s_f", "n_f")
+male
+female
+```
+
+Now, considering the wage_male and wage_female as independent variables, we then have that for the variable gap = wage_male - wage_female follows asymptotically a t_stastic with:
+
+E(gap) = E(wage_male) - E(wage_female) , var(gap) = var(wage_male) + var(wage_female) , thus
+
+[estimated E(gap)]{.underline} is gap_bar Y_bar_m - Y_bar_f
+
+[estimated se(gap)]{.underline} is (s_m2 /n_m +s_f2 /n_f)^1/2^
+
+```{r}
+gap <- male$Y_bar_m - female$Y_bar_f
+
+gap_se <- sqrt(male$s_m^2 / male$n_m + female$s_f^2 / female$n_f)
+
+
+```
+
+So, we finally calculate the 95% confidence interval as follows
+
+```{r}
+gap_ci_l <- gap - 1.96 * gap_se
+
+gap_ci_u <- gap + 1.96 * gap_se
+
+result <- cbind(gap, gap_se, gap_ci_l, gap_ci_u)
+
+
+print(result, digits = 3)
+```
+
+Our result coincides with the result of the automated t-test we have alternatively performed.
+
+As a final task we examine correlation between the continuous numerical variables of the dataset. To that end we calculate the correlation and create the corresponding scatterplot for each pair
+
+```{r}
+library(corrplot)
+subset=cps[,2:5]
+cor1=cor(subset)
+corrplot.mixed (cor1, lower.col='black', number.cex=.7)
+pairs(subset)
+
+
+
+
+
+```
+
+Among others we observe a very high positive correlation between experience and age, a relatively high positive correlation between wage and education and a relatively high negative correlation between education and experience.
