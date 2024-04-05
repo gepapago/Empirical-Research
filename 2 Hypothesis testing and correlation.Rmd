@@ -1,0 +1,223 @@
+---
+title: "Hypothesis, Research Design, Correlation"
+output:
+  html_document: default
+  word_document: default
+date: ""
+---
+
+### Hypotheses
+
+Are assumptions about structural properties of reality generally valid: they go beyond an individual situation or event must be falsifiable =\> they can be disproved
+
+Good example: The monetary return to education is higher in natural sciences than in arts.
+
+Bad example: COVID-19 infections can improve health in the long-term.
+
+### t-tests
+
+Often, we would like to make statements on equality of groups, values etc. e.g. gpa's of students at the TUM and the LMU are different across study programmes.
+
+So calculate differences of gpa's for each study programme between TU and LMU with Nullhypothesis (H0): mean of gpa's at TUM = mean of gpa's at LMU and Alternative hypothesis (H1): mean of gpa's at TUM differ from mean of gpa's at LMU
+
+Calculate the test statistic: t = (Xbar-mu)/(s/sqrt(n)) where:
+
+t = test statistics
+
+Xbar = sample mean
+
+mu = mean of the population under the Nullhypothesis
+
+s = standard deviation of the SAMPLE
+
+n = number of observations
+
+Obtain critical value from t-table based on a level of significance (alpha).
+
+Make a decision to reject H0 or not based on whether the test statistic exceeds the critical value.
+
+We will never accept a hypothesis but only reject a hypothesis!
+
+### Research and survey design
+
+Populations are usually (too) large. Therefore, we select a sample that we would like to study. There are different selection methods which require us to adjust our analysis accordingly.
+
+Central limit theorem: for sample sizes above 30, the mean of the sample is approximately normally distributed.
+
+[**Let us check whether gpa's at TUM and LMU are different from each other**]{.underline}**:**
+
+We first import a take a look of the relevant data
+
+```{r}
+library(readxl)
+gpadat <- read_excel("D:/data/Empirical Research/gpadat.xlsx")
+```
+
+```{r message=FALSE, warning=FALSE}
+gpadat
+```
+
+Then we create a variable containing the differences between gpa's
+
+```{r}
+ gpadat$gpadif = gpadat$TUMgpa-gpadat$LMUgpa
+ gpadat
+```
+
+We can first investigate this the distribution of the difference in gpa's grafically .
+
+```{r message=FALSE, warning=FALSE}
+library(psych)
+library(ggplot2)
+describe(gpadat$gpadif)
+densip = ggplot() + geom_density(data=gpadat,aes(x=gpadif))
+densip
+```
+
+The empirical distribution seems symmetric and centered around 0. So we can conclude quite safely that there is no significant difference. However we must verify this by performing a t-test. So,
+
+we first calculate the t-statistic
+
+```{r message=FALSE, warning=FALSE}
+library(gdata)
+t = (mean(gpadat$gpadif)-0)/(sd(gpadat$gpadif)/(nobs(gpadat$gpadif)^0.5))
+```
+
+and then we calculate the critical values for a series of significance levels (note that we have to half the level of significance since R assumes that we carry out a one-sided test by default!)
+
+```{r}
+tcrit001 = qt(0.0005,nobs(gpadat$gpadif)-1, lower.tail=FALSE)
+tcrit010 = qt(0.005,nobs(gpadat$gpadif)-1, lower.tail=FALSE)
+tcrit050 = qt(0.025,nobs(gpadat$gpadif)-1, lower.tail=FALSE)
+tcrit100 = qt(0.05,nobs(gpadat$gpadif)-1, lower.tail=FALSE)
+```
+
+H0: The mean difference in gpa's is equal to zero.
+
+H1: The mean difference in gpa's is not equal to zero.
+
+Decision Rule: Reject H0 at the level α% if the t-statistic exceeds the critical value of α% significance.
+
+```{r}
+t
+tcrit001
+tcrit010
+tcrit050
+tcrit100
+```
+
+Hence, we cannot reject H0 and do not find evidence for a difference in mean gpa's on any reasonable level of significance.
+
+Equivalently we could use an R command for the t-test, which verifies our manual result
+
+```{r}
+ t.test(gpadat$gpadif, mu=0)
+```
+
+### Correlation
+
+Oftentimes we are interested in analyzing the relationship of at least two variables.
+
+Correlation analysis is a common tool for this. e.g. What is the correlation between the average daily temperature and the ice cream #sales in a supermarket?
+
+There are different correlation coefficients (e.g. Spearman and Bravais-Pearson). The choice mostly depends on the type of data the you have. The most important/frequent are the Spearman rank correlation coefficient and the Bravais-pearson correlation coefficient.
+
+The Bravais-Pearson correlation coefficient for two variables X and Y is calculated by dividing the covariance of X and Y by the product of the standard deviations of X and Y:
+
+BPC = cov(X,Y)/sd(X)\*sd(Y) where
+
+cov = covariance and sd = standard deviation
+
+It ranges from -1 (perfect negative correlation) to 1 (perfect positive correlation).
+
+The Spearman rank correlation coefficient is calculated similarly but ranks are used.
+
+For interval scaled data, use B-P but... in the presence of outliers ... non-normally distributed data ... highly non-linear relationships use the Spearman correlation coefficient.
+
+[**Does renewable electricity production leads to increased price volatility on the electricity spot market?**]{.underline}
+
+or in other words
+
+**Is there a [significant correlation]{.underline} between [solar power production]{.underline} and the [coefficient of variation of the electricty spot market price]{.underline}?**
+
+Let us first import the relevant data from the csv file "solardat.csv"
+
+```{r message=FALSE, warning=FALSE}
+library(readr)
+solardat <- read.csv("D:/data/Empirical Research/solardat.csv",sep=";")
+head(solardat)
+```
+
+We start with the Bravais-Pearson correlation. We calculate the covariance of cv and solar power production
+
+```{r}
+covcvs = cov(solardat$CV_daily,solardat$PV_daily_MWh)
+covcvs
+```
+
+and the standard deviations of each variable
+
+```{r}
+sdcv = sd(solardat$CV_daily) 
+sdcv
+sds = sd(solardat$PV_daily_MWh)
+sds
+```
+
+So the Bravais-Pearson correlation coefficient becomes
+
+```{r}
+bpman = covcvs/(sdcv*sds) 
+bpman
+```
+
+But is this significant? Let's use a t-test to check it. To do so we walculate test statistic
+
+```{r message=FALSE, warning=FALSE}
+library(gdata)
+tbpcor = (bpman/((1-bpman^2)^0.5))*(nobs(solardat$CV_daily)-2)^0.5
+tbpcor
+```
+
+as well as the critical values for various significance levels(we have to half the level of significance since R assumes that we carry out a one-sided test by default!)
+
+```{r}
+tcritbp001 = qt(0.0005,nobs(solardat$CV_daily)-2, lower.tail=TRUE) 
+tcritbp010 = qt(0.005,nobs(solardat$CV_daily)-2, lower.tail=TRUE) 
+tcritbp050 = qt(0.025,nobs(solardat$CV_daily)-2, lower.tail=TRUE) 
+tcritbp100 = qt(0.05,nobs(solardat$CV_daily)-2, lower.tail=TRUE)
+
+tcritbp001 
+tcritbp010
+tcritbp050 
+tcritbp100
+```
+
+H0: The bpman equal to zero.
+
+H1: The bpman is not equal to zero.
+
+Reject H0 at the α% significance level if the t-statistic exceeds the the respective critical value.
+
+As tbpcor does not exceed any of them even at the lowest 90% level of significance we fail to reject H0 and conclude that the correlation is zero at the 90% significance level.
+
+Again, R offers the opportunity to avoid doing the correlation analysis manually
+
+```{r message=FALSE, warning=FALSE}
+library(Hmisc)
+rcorr(as.matrix(solardat[,2:3]))
+
+```
+
+However,
+
+```{r}
+plot(solardat$PV_daily_MWh,solardat$CV_daily)
+```
+
+Now, let us use the Spearman-rank correlation
+
+```{r message=FALSE, warning=FALSE}
+
+rcorr(as.matrix(solardat[,2:3]), type = c("spearman"))
+```
