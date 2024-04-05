@@ -1,0 +1,221 @@
+---
+title: "OLS Assumptions_Detection and Solution"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+# OLS assumptions
+
+1.  Correct specification of the model.
+2.  Model has to be linear in parameters.
+3.  Number of observations is greater than number of parameters.
+4.  The variance of each independent variables is not zero (not all observations have the same value for the independent variable).
+5.  Independent variables are deterministic.
+6.  No perfect multicollinearity
+7.  Homoskedasticity: Constant variance of the errors across value of independent variables.
+8.  No correlation between residuals. For two given and different values of the X the errors are not correlated.
+9.  The covariance between X and the error is zero.
+10. The mean of the errors for a given X is zero.
+11. The errors are normally distributed.
+
+# OLS properties
+
+If the OLS assumptions hold, then the OLS-estimator will be the best, linear, unbiased one.
+
+-   **unbiased**, i.e. the estimates converge towards their true value with an increasing number of observations.
+
+-   **consistent**, i.e. the variance (standard error) decreases with an increasing number of observations.
+
+-   **efficient**, i.e. it has the lowest variance (standard error) among all estimators available.
+
+# Assumption violation: Detection & Solutions
+
+## Multicollinearity
+
+Imagine we run a regression including revenue and total assets as explanatory variables in our model. The OLS will not be able to distinguish between the effects of the two correctly. We will then have high [multicollinearity]{.underline}, which [results to]{.underline}
+
+**less precise parameter estimates =\> increased standard errors of the estimates =\> lower t-values**
+
+### Detection:
+
+-   [High R-squared]{.underline} but [few significant parameters]{.underline}
+
+-   [High pairwise correlations]{.underline} between independent variables $|corr|>0.8$
+
+-   [High Variance inflation factor]{.underline}: $VIF>= 5$
+
+### Solutions:
+
+-   Usage of [more and/or better data]{.underline}
+
+-   [Exclusion of]{.underline} one or more [variables]{.underline} (particularly in the case of perfect multicollinearity) but risk of specification errors
+
+-   Other methods such as [factor analysis]{.underline}
+
+### Example
+
+Let the data "MarketPower.xlsx"
+
+```{r echo=FALSE}
+library(readxl)
+mpow <- read_excel("D:/data/Empirical Research/MarketPower.xlsx")
+summary(mpow)
+```
+
+Lets us run an OLS regression
+
+```{r}
+OLSbase = lm(Markup~RevGR+eqshare+FCR+age+TotalassetsthEUR, dat=mpow)
+summary(OLSbase)
+```
+
+The phenomenon of "high-R-squared, few significant parameters rule", is not observed in our model as there are indeed only one or two significant parameters but the the $R^{2}=0.05 << 1$ . Thus, we would conclude that there is no multicollinearity issue concerning the specific linear model?
+
+As a second detection method let us calculate the pairwise correlation coefficients
+
+```{r}
+indepvar = cbind(mpow[,5], mpow[,18], mpow[,20], mpow[,22:23])
+cor(indepvar)
+```
+
+Again we observe that no pairwise correlation coefficient has absolute value is greater than 0.8. According to this criterion there is no multicollinearity in our model
+
+Finally, let us examine according to VIF detection method
+
+```{r}
+library(car)
+vif(OLSbase)
+```
+
+As no VIF is equal to or higher than 5, we conclude again that there is no multicollinearity issue with the selected independent variables of this linear model
+
+## Heteroskedasticity
+
+The variance of the errors varies across observations leading to distorted standard errors =\> t-tests become inaccurate (usually indicate higher significance). (Suppose you regress a common-product consumption on income =\> for large incomes, the errors will be larger, i.e. their variance increases)
+
+### Detection
+
+-   [Goldfeld/Quandt test]{.underline}: equality of error variance cross subsamples tested (F-test)
+
+-   [Method of Glesjer:]{.underline} Regress absolute values of residuals on independent variables.
+
+-   [Breusch-Pagan-test]{.underline}: Regress squared residuals on independent variables. Conduct a Chi-squared test with k-1 degrees of freedom (k = number of explanatory variable) where: $BP=n{R^{2}}$
+
+-   [White test:]{.underline} Regress squared residuals on independent variables and their products. Conduct a Chi-squared test with k-1 degrees of freedom (k = number of explanatory variables) where: $W=n{R^{2}}$
+
+### Solutions
+
+-   Solve specification errors ([omitted variables]{.underline})
+
+-   Use o[ther estimators]{.underline} (such as [weighted least squares]{.underline})
+
+-   T[ransform the error term]{.underline} ([Generalized least squares]{.underline})
+
+-   Use h[eteroskedasticity robust standard errors]{.underline} (most popular)
+
+### Example
+
+Let us consider again the data "MarketPower.xlsx" and the same linear model "OLSbase".
+
+We start with the Breusch-Pagan test for Heteroskedasticity
+
+```{r}
+mpow$sqres = OLSbase$residuals^2
+BPreg = lm(sqres~RevGR+eqshare+FCR+age+TotalassetsthEUR, dat=mpow)
+BP = nrow(mpow)*summary(BPreg)$r.squared
+BP
+BPpv = pchisq(BP, length(BPreg$coefficients)-1,lower.tail=FALSE)
+BPpv
+```
+
+As the $p-value << 1$ we conclude that under the H0 : 'there is no Heteroskedasticity' a value $BP = 57.907$ it is extremely unlikely to be measured. Thus we reject the null hypothesis in favor of heteroskedasticity.
+
+Alternatively we can conduct a White-test
+
+```{r}
+WTreg = lm(sqres~RevGR+eqshare+FCR+age+TotalassetsthEUR+I(RevGR*RevGR)+RevGR*eqshare+RevGR*FCR
+                  +RevGR*age+RevGR*TotalassetsthEUR+I(eqshare*eqshare)+eqshare*FCR+eqshare*age
+                  +eqshare*TotalassetsthEUR+I(FCR*FCR)+FCR*age+FCR*TotalassetsthEUR
+                  +I(age*age)+age*TotalassetsthEUR+I(TotalassetsthEUR*TotalassetsthEUR), dat=mpow)
+summary(WTreg)
+WT =  nrow(mpow)*summary(WTreg)$r.squared
+WT
+WTpv = pchisq(WT, length(WTreg$coefficients)-1,lower.tail=FALSE)
+WTpv
+```
+
+With that test we also have that $p-value << 1$ .We conclude that under the H0 : 'there is no Heteroskedasticity' a value $W = 126.49$ it is extremely unlikely to be measured. Thus we reject the null hypothesis in favor of heteroskedasticity.
+
+A way to resolve the issue of heteroskedastic errors we use robust standard errors, which by construction are wider(and thus more realistic) than the ones from the simple model.
+
+## Autocorrelation
+
+The residuals are correlated over time. Hence, autocorrelation is mostly relevant when working with times series or panel data. Autocorrelation typically leads to downward biased standard errors.
+
+### Detection
+
+-   Look at the [scatterplot]{.underline} of the [residuals from t against]{.underline} those [from t-1]{.underline}.
+
+-   [Durbin-Watson test]{.underline}: The test statistic is calculated as: d = $\sum ([u(t)-u(t-1)]^{2})/\sum([u(t)]^{2})$ where
+
+    d lies between 0 and 4 and we look up lower and upper d from the table.
+
+### Solutions
+
+-   Mostly changing the model specification.
+
+### Example
+
+We consider the time-series data "solardat.csv"
+
+```{r}
+library(readr)
+soldat <- read.csv("D:/data/Empirical Research/solardat.csv",sep=";")
+head(soldat)
+```
+
+Let us run a linear model
+
+```{r}
+OLSsol = lm(CV_daily~PV_daily_MWh, dat=soldat)
+summary(OLSsol)
+```
+
+Obtain residuals
+
+```{r message=FALSE, warning=FALSE}
+library(Hmisc)
+soldat$solres= OLSsol$residuals
+soldat$lagsolres = Lag(soldat$solres)
+```
+
+Generate the test statistic
+
+```{r}
+soldat$difres = (soldat$solres-soldat$lagsolres)^2
+soldat$sqres = soldat$solres^2
+dtest = sum(soldat$difres, na.rm=TRUE)/sum(soldat$sqres, na.rm=TRUE)
+dtest
+```
+
+We use predefined function in R to perform the Durbin-Watson test
+
+```{r}
+
+library(car)
+durbinWatsonTest(OLSsol)
+
+```
+
+A possible way to resolve the issue of autocorrelation is the following
+
+```{r}
+soldat$lagcv = Lag(soldat$CV_daily)
+autoco = lm(CV_daily~PV_daily_MWh+lagcv,dat=soldat)
+summary(autoco)
+durbinWatsonTest(autoco)
+```
+
+As we can observe the autocorrelation is now not statistical significant.
