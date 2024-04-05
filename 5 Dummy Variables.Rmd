@@ -1,0 +1,88 @@
+---
+title: "Dummie Variables"
+output:
+  word_document: default
+  html_document: default
+date: ''
+---
+
+Dummy variables are included in models to include explanatory variables that are not of metric scale (but ordinal or nominal), e.g. whether a certain event has taken place or not. Dummy variables have values of zero or one, i.e. there are two possible outcomes.
+
+## Intercept dummies
+
+Suppose you want to know what factors determine the GPA of highschool students across the United States. You might want to know the effect of having a photographic memory on the GPA. Hence, you create an intercept dummy that is zero for people without a photographic memory and one for people who have a photographic memory. This is a typical example of an intercept dummy. We assume that a certain variable only causes a shift in the intercept without changing anything else.
+
+## Slope dummies
+
+You might include the number of hours students spent on studying in your regression modelto explain the GPA.However, people with a photographic memory will have a very different relationship betweenthe number of hours spent on studying and the GPA compared to students without a photographic memory. Therefore, we would include an interaction term between the hours of studying and our dummy variable on top of the hours of studying in our regression model.Thereby, we will generate one coefficient that captures the effect of studying on the GPA for students without a photographic memory, and a second coefficient that captures the additional payoff of one hour studying for students with a photographic memory. This is what we refer to as a slope dummy.
+
+## Intercept and slope dummies
+
+For the above example (and in many other applications), it would be wise to include the dummy variables once as a slope dummy and once as an intercept dummy. The students with a photographic memory will then have a different intercept (generally better GPA) and a different relationship of time spent on studying compared to other students.Hence, we have a slope and intercept dummy.
+
+## Several outcomes in one variable
+
+We might also have cases where we have a variable with several outcomes. In our example, we would control for the city that the students are living in. We have to create as many dummies as there are cities in our sample minus one (!!!) to avoid perfect multi-collinearity across the dummies and the intercept. Alternatively, we could also estimate the model with dummies for all cities (NOT minus one) and exclude an intercept. We would obtain city-specific intercepts then.
+
+## Eaxample
+
+We first import the data "MarketPower.xlsx"
+
+```{r}
+library(readxl)
+mapo <- read_excel("D:/data/Empirical Research/5 Dummy Variables/MarketPower.xlsx")
+head(mapo)
+summary(mapo)
+```
+
+We now want to know whether we do observe year-specific effects in markup that deviate from a linear trend. To that direction let us first create the year dummies:
+
+```{r message=FALSE, warning=FALSE}
+library(fastDummies)
+library(recipes)
+mapo <- dummy_cols(mapo, select_columns = 'year')
+```
+
+Now, we can run our linear model including a time trend
+
+```{r}
+OLSbase = lm(Markup~RevGR+eqshare+FCR+age+TotalassetsthEUR+year, dat=mapo)
+summary(OLSbase)
+```
+
+As a following step we check what we observe when we include our time dummies
+
+```{r}
+OLSdum = lm(Markup~RevGR+eqshare+FCR+age+TotalassetsthEUR+year_2010+year_2011
+             +year_2012+year_2013+year_2014+year_2015+year_2016+year_2017,dat=mapo)
+summary(OLSdum)
+```
+
+Interpretation (year_2010): Our model suggests that Markup is 0.175 units larger in 2010 compared to 2009. However, the effect is not significantly different from zero.
+
+The time trend would be misleading since we have only one exceptional year driving the time trend effect (2012).
+
+We might also include all time dummies and drop the intercept
+
+```{r}
+OLSni = lm(Markup~RevGR+eqshare+FCR+age+TotalassetsthEUR+year_2009+year_2010+year_2011
+            +year_2012+year_2013+year_2014+year_2015+year_2016+year_2017-1,dat=mapo)
+summary(OLSni)
+```
+
+If we did not drop the intercept when including all dummies, R automatically drops a random dummy from the regression to avoid perfect multicollinearity.
+
+```{r}
+OLSfai = lm(Markup~RevGR+eqshare+FCR+age+TotalassetsthEUR+year_2009+year_2010+year_2011
+           +year_2012+year_2013+year_2014+year_2015+year_2016+year_2017,dat=mapo)
+summary(OLSfai)
+```
+
+As a last example, let us include a slope dummy and intercept dummy (for 2012)
+
+```{r}
+OLSsld = lm(Markup~RevGR+eqshare+FCR+age+TotalassetsthEUR+year_2010+year_2011
+            +year_2012+year_2013+year_2014+year_2015+year_2016+year_2017
+            +year_2012:TotalassetsthEUR,dat=mapo)
+summary(OLSsld)
+```
