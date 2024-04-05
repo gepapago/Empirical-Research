@@ -1,0 +1,84 @@
+---
+title: "Classification with Logit"
+output:
+  word_document: default
+  html_document: default
+---
+
+Suppose we would like to investigate dependent variables that are binary, e.g. does the consumer buy the product or not, or will a start-up survive or not. For such cases, we have a binary dependent variable where we usually have a value of 1,if the event will occur and zero otherwise. We want to predict the probability of ouroutcome variable being equal to one or zero.
+
+## Why does OLS not work here?
+
+-   OLS requires a certain variation in the dependent variable, i.e. metric scale, which is not fulfilled for the binary outcome in our case.
+-   OLS assumes that the error term is normally distributed: This can be severely violated in our case.
+-   In addition, OLS will deliver predicted values that diverge from the 0 and 1 scheme we desire.
+
+## Logistic regression
+
+In contrast to OLS,
+
+-   logistic regression does not deliver predicted values but probabilities of occurrence (of a 1).
+
+-   For this purpose, logistic regression creates a latent variable (Z). Z is not equal to our outcome variable but created artificially. This latent variable Z will then be determined by a linear function which looks like the OLS regression that we already know.
+
+-   The predicted values of our dependent variable (0/1) will be determined by Z. If the predicted value of Z is larger than zero, the predicted value of Y will be 1 and zero otherwise.
+
+## Example
+
+Let us consider the "foodexport.xlsx" data
+
+```{r}
+library(readxl)
+fexp <- read_excel("D:/data/Empirical Research/foodexport.xlsx")
+head(fexp)
+```
+
+Let us check what determines the decision to export (ExportD=1) or not (ExportD=0)
+
+```{r}
+logit = glm(ExportD~Numberofemployees+logOmega+year_2012+year_2013+year_2014
+            +year_2015+year_2016+year_2017+year_2018, family="binomial", dat=fexp)
+summary(logit)
+```
+
+The resulting coefficients are not the impact on the probabilities but on the latent variable Z!However, (at least) we can interpret the sign of the coefficients and their significance.
+
+To obtain the predicted probabilities, we can use the following piece of code
+
+```{r}
+fexp$predictp = predict(logit, fexp, type = "response")
+```
+
+Let us see how accurate our prediction actually is.
+
+We can say that we would predict that a firm exports if the predicted probability were \>0.5
+
+```{r}
+fexp$predictionexp = 0
+for (i in 1:nrow(fexp)){
+  if (is.na(fexp$predictp[i])){
+    fexp$predictionexp[i]=NA }
+  else if (fexp$predictp[i]>0.5) {
+    fexp$predictionexp[i] = 1
+  }
+  
+}
+```
+
+Now let us see what observations have been identified correctly
+
+```{r}
+fexp$correct = 0
+for (i in 1:nrow(fexp)){
+  if (is.na(fexp$predictp[i])){
+    fexp$correct[i]=NA }
+  else if (fexp$predictionexp[i]==fexp$ExportD[i]) {
+    fexp$correct[i] = 1
+  }
+  
+}
+
+summary(fexp$correct)
+```
+
+We predicted correctly the 82.5% of the cases.
