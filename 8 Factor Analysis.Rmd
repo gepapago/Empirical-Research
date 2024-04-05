@@ -1,0 +1,193 @@
+---
+title: "Factor Analysis"
+output:
+  html_document: default
+  word_document: default
+---
+
+**Factor analysis** aims at r[educing the dimensionality of a data]{.underline} set, i.e. the dimensions/variables.
+
+We want to summarize variables into factors (information loss).
+
+-   [Variables within factors]{.underline} should be [highly correlated.]{.underline}
+
+-   [Factors]{.underline} should be independent from each other, i.e. [poorly correlated]{.underline}.
+
+## Data requirements
+
+-   metric scale level no outliers sufficient correlation between variables (\|r\|\>0.3)
+
+-   linear relationship between variables
+
+-   at least 5/10 observations per variable
+
+-   underlying data should be homogeneous and theoretically consistent, i.e. logical relationship between variables
+
+## Steps of factors analysis
+
+1.  Calculation and evaluation of correlation matrix
+
+2.  Extraction of factors
+
+3.  Determination of communalities
+
+4.  Number of factors
+
+5.  Factor interpretation
+
+6.  Determination of factor scores
+
+### 1. Calculation and evaluation of correlation matrix
+
+Generate the correlation matrix for the variables in the analysis.
+
+-   [Kaiser-Meyer-Olkin (KMO) criterion]{.underline}: How useful are variables for a factor analysis?
+
+    Shows overall common variability of variables =\> should be larger than 0.5
+
+-   [Bartlett-test of sphericity]{.underline} : are correlations between variables significantly different from zero?
+
+    It tests for identity correlation matrix
+
+### 2.Extraction of factors
+
+[Principal component analysis (PCA]{.underline}) and [principle axis factoring (PAF)]{.underline}
+
+-   PCA [most commonly used]{.underline} =\> [best]{.underline} method [for information reduction]{.underline}
+
+    Generates the [factors]{.underline} as l[inear combinations of the variable]{.underline}s used in the analysis.
+
+    We obtain [factor loadings]{.underline} which are [correlation coefficients between]{.underline} [variables and factors]{.underline}.
+
+-   PCA generates factors such that the [factor loadings are maximized]{.underline} within an iterative process.
+
+### 3.Determination of communalities
+
+Factor loadings are correlation coefficients between factors and original variables, i.e. range from -1 to 1. [High loading =\> variable contributes much to the explanation of the factor]{.underline}.
+
+[Squared factor loading]{.underline}: What percentage of the variability in a variable is explained by a factor.
+
+[Communality:]{.underline} the share of a variable's variability explained by all factors together\
+Calculated by the sum of the squared loadings of the variable across all factors
+
+### 4.Number of factors
+
+[Eigenvalue of a factor]{.underline}: The sum of all squared loadings for one factor
+
+-   It gives us the number of average variables that the factor represents
+
+Due to the nature of factor analysis, we lose information contained in the original variables when using factors instead of variables.
+
+-   The [smaller the number off factors, the larger the information loss.]{.underline}
+
+There is trade-off between the advantages and disadvantages of factor analysis when determining the optimal number of factors.
+
+1.  [Eigenvalue criterion]{.underline}: Eigenvalues should be above one.
+
+```         
+Factor explains more variation than an average variable.
+```
+
+2.  [Elbow criterion]{.underline}: Exclude all factors in the flat region and use factors up to the elbow.
+
+### 5. Factor interpretation
+
+Look at the factor loadings to identify variables that load on the factor.
+
+We can assign names and check for theoretical consistency.
+
+Sometimes factor composition does not make much sense. In that case use factor rotation.
+
+### 6. Determination of factor scores
+
+We can use factors to
+
+-   discover variable structures and create categories of variables.
+
+-   for further analysis such as regression models in cases of small samples(=\> Determine factor scores).
+
+## Application
+
+Let us analyze a data set containing information on characteristics of 50 pastries
+
+```{r}
+library(readr)
+food <- read.csv("https://userpage.fu-berlin.de/soga/300/30100_data_sets/food-texture.csv",
+                 row.names = "X")
+head(food)
+```
+
+Evaluation of the correlation matrix
+
+```{r}
+cor(food, use="complete.obs")
+
+```
+
+Kaiser-Meyer-Olkin criterion
+
+```{r}
+library(psych)
+KMO(food)
+```
+
+Bartlett-test of sphericity
+
+```{r}
+library(REdaS)
+
+bart_spher(food, use = c("complete.obs"))
+```
+
+Extraction of factors, factor loadings and eigenvalues
+
+```{r}
+pca=principal(na.omit(food), nfactors=5, rotate="none")
+pca
+```
+
+Elbow criterion
+
+```{r}
+pcae=princomp(na.omit(food), cor=TRUE, scores=TRUE)
+library(factoextra)
+fviz_eig(pcae)
+```
+
+Determination of communalities
+
+```{r}
+pcar=principal(na.omit(food), nfactors=2, rotate="none")
+pcar
+#communalities
+pcar$communality
+```
+
+Let us now perform a factor rotation. The base loadings are
+
+```{r}
+pcar
+```
+
+Performing a rotation with $varimax$
+
+```{r}
+pcarot=principal(na.omit(food), nfactors=2, rotate="varimax")
+pcarot
+```
+
+We perform a rotation with $oblimin$
+
+```{r}
+library(GPArotation)
+pcarotobl=principal(na.omit(food), nfactors=2, rotate="oblimin")
+pcarotobl
+```
+
+Finally we get the Factor scoores
+
+```{r}
+pcarotobl$scores[1:10,]
+
+
+```
