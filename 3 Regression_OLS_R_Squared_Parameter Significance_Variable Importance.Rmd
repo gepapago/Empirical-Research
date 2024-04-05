@@ -1,0 +1,243 @@
+---
+title: "Regression, OLS,Model Quality ,Parameter Significance, Variable Importance"
+output:
+  word_document: default
+  html_document: default
+date: ""
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+# 1. Regression
+
+In many cases, researchers/business analysts are interested in
+determining relationships of variables, e.g. advertisement expenditures
+and sales.
+
+We always have one variable that we would like to explain that is called
+Y or dependent variable, and we have a set of variables that should
+explain Y which we call X or explanatory or independent variables.
+
+A regression analysis will always yield a line that explains the
+relationship between the explanatory variables and the dependent
+variable in the best possible way (in the case of one explanatory
+variable): $Y =\alpha + \beta*X$
+
+However, since we work with observational data, there are also sources
+of errors that prevent our line to fit the data perfectly well such as
+measurement error or non-linear relationships or omitted variables.
+
+We will work with linear regressions only. Hence, we assume that the
+relationship between the explanatory variables and the dependent
+variable is linear! This assumption will be somewhat relaxed later on.
+
+So how do we find the line fitting our data best?
+
+# 2. Ordinary least squares (OLS)
+
+Ordinary least squares (OLS) generates a line such that the sum of the
+squared errors of our prediction of the dependent variable (Y) given the
+explanatory variable (X) in our sample is minimized.
+
+Under certain assumptions, the OLS estimator is BLUE, i.e. the best,
+linear, unbiased estimator.
+
+Another advantage is the easy interpretation of the results: What
+happens to Y if X increases by one unit, HOLDING ALL OTHER VARIABLES
+CONSTANT? This is basically given by the respective coefficient estimate
+of X.
+
+# 3. Quality of our model
+
+The most famous "quality" measure is the R^2^. It basically tells us
+what share/ percentage in the variation of Y is explained by all X
+jointly. It ranges from 0 to 1. $R^2 = ESS/TSS$
+
+where $ESS$ is the explained sum of squares and $TSS$ is the total sum
+of squares
+
+If none of our X does have explanatory power to predict Y,R^2^ will be
+equal to zero. If our explanatory variables are able to perfectly
+predict Y, R^2^ will be equal to one.
+
+An issue with R^2^ is that it increases by adding more variables to the
+model, even though the new X have no/very little explanatory power. The
+estimator will always be able to establish some relationship between X
+and Y.
+
+Solution: Adjusted R-squared which corrects for the number of parameters
+included in the model.
+
+# 4. Significance of parameters
+
+So far, we have only looked at the overall quality of our model since
+R^2^ tells us what share of the variation in Y is explained by all X
+together. However, we would also like to know whether the relationship
+between each of the single X and Y is significantly different from zero.
+
+We can use a t-test for this again. It is now calculated by: t =
+$(\hat{\beta}-0)/se(\hat{\beta})$
+
+Moreover, we can test the Nullhypothesis that ALL parameters are JOINTLY
+equal to zero. This can be done using the F-Test.
+$F = (ESS/(k-1))/(RSS/(n-k))$
+
+where k is the number of parameters to be estimated n is the number of
+observations.
+
+# 5. Importance of variables
+
+The size of a coefficient estimate does not tell us much about the
+importance of an explanatory variable to explain our dependent variable
+since we measure the variables in different units.
+
+Solution: Standardized coefficients.
+$\hat{\beta}stand = \hat{\beta}*sd(X)/sd(Y)$ where
+
+$\hat{\beta}stand$ is the standardized coefficient estimate of
+$\hat{\beta}$
+
+$sd(X)$ is the standard deviation of X
+
+$sd(Y$) is the standard deviation of Y
+
+# Theoretical Example
+
+Let start with an illustration of OLS in a quite general way by
+evaluating a rather artificial example
+
+```{r message=FALSE, warning=FALSE}
+n = 200
+xone=seq(1:n)
+yone = 1.5*xone + rnorm(n=n, mean = 3, sd=25)
+
+plot(xone,yone)
+olsone = lm(yone~xone)
+summary(olsone)
+plot(xone,yone,abline(lm(yone~xone)))
+```
+
+What happens, if we decrease the noise?
+
+```{r}
+n = 200
+xtwo=seq(1:n)
+ytwo = 1.5*xtwo + rnorm(n=n, mean = 3, sd=5)
+
+plot(xtwo,ytwo)
+olstwo = lm(ytwo~xtwo)
+summary(olstwo)
+plot(xtwo,ytwo,abline(lm(ytwo~xtwo)))
+```
+
+What happens, if the relationship was not linear?
+
+```{r}
+xthree=seq(1:n)
+ythree = log(xthree) + rnorm(n=n, mean = 3, sd=0.5)
+
+plot(xthree,ythree)
+olsthree = lm(ythree~xthree)
+summary(olsthree)
+plot(xthree,ythree,abline(lm(ythree~xthree)))
+```
+
+We can solve this by tranforming our X variable
+
+```{r}
+logxthree = log(xthree)
+plot(logxthree,ythree)
+olsfour = lm(ythree~logxthree)
+summary(olsfour)
+plot(logxthree,ythree,abline(lm(ythree~logxthree)))
+```
+
+# Real Example
+
+Let's use real data: the mpg data set (publicly available) is shipped
+with ggplot2
+
+The variables contained in the datset are:
+
+manufacturer = manufacturer of the car
+
+model = model
+
+displ = engine displacement in liters
+
+year = year of manufacturing
+
+cyl = number of cylinders
+
+trans = type of transmission (automatic/manual)
+
+drv = drive type front, rear and 4-wheel
+
+cty = city mileage in miles per gallon
+
+hwy = highway mileage in miles per gallon
+
+fl = fuel type
+
+class = vehicle class (SUV etc.)
+
+```{r}
+library(ggplot2)
+dat = mpg
+hmile = lm(hwy~displ+year, dat=dat)
+summary(hmile)
+```
+
+The $TSS$, $RSS$ and $ESS$ for our model are
+
+```{r}
+TSS = var(dat$hwy)*(nrow(dat)-1)
+dat$errsq = (hmile$residuals)^2
+RSS =sum(dat$errsq)
+ESS=TSS-RSS
+TSS
+RSS
+ESS
+```
+
+The $R^{2}$ can then be calculated manually as
+
+```{r}
+R_squared = ESS/TSS
+R_squared
+```
+
+whereas the $F-statistic$ is calculated manually as
+
+```{r}
+fishstat = (ESS/(length(coefficients(hmile))-1))/
+  (RSS/(nrow(dat)-length(coefficients(hmile))))
+fishstat
+```
+
+Of course, the above information together with any additional concerning
+the coefficients, their standard errors and the corresponding $p-values$
+is already included in the collective table above. We realize
+
+-   The value of the $R^{2}=0.6$ is quite big, so the model explain
+    about 60% of the variation of $Y=hwy$
+
+-   The coefficient of $disp$ is **significant**(not zero) at any level
+    of significance(as $p-value <<1$)) whereas the coefficient of $year$
+    is **significant**(not zero) at a significance level of greater than
+    99%(as $p-value = 0.005 <0.01$)
+
+-   As already expected, the two variables are also jointly significant
+    at any level of significance (as $F-statistic = 173.5$ with
+    $p-value <<1$)
+
+However, the fact the coefficients of the respective variables are
+significant does not imply that the respective variable is also
+important! To examine that we should standardize **the coefficients**
+first
+
+The standardized coefficient of $year$ becomes 0.118 from 0.156 whereas
+that of $displ$ decreases from -3.611 to -0.783. We observe that the the
+**variable** $displ$ **is not as important** as it would naively seem
+without standardizing the coefficients.
